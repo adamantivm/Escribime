@@ -65,7 +65,7 @@ public class EscribimeService extends Service {
    }
 
    private void updateNotification( int unread) {
-		int icon = unread == 0 ? R.drawable.icon : R.drawable.happyness;
+		int icon = unread == 0 ? R.drawable.sadness : R.drawable.happyness;
 		CharSequence tickerText = "";
 		long when = System.currentTimeMillis();
 		notification = new Notification(icon, tickerText, when);
