@@ -1,97 +1,136 @@
 package org.cygx1.escribime;
 
-import java.io.IOException;
-import java.io.InputStream;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.protocol.ClientContext;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.DefaultHandler;
-import org.xml.sax.helpers.XMLReaderFactory;
-
 import android.app.Activity;
-import android.net.http.AndroidHttpClient;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Base64;
-import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.Toast;
+import android.widget.EditText;
+import android.widget.SeekBar;
+
+/***********************
+ * @author adamantivm
+ *
+ * TODO
+ * - Take credentials from Google account in the phone
+ * - Hook up to synchronization service and update via that channel (to avoid more connections to the web)
+ * - BUG: Clicking on the Notification icon opens a *new* Activity, instead of going to the old one
+ * - Unread count as icon
+ * - Concealed shortcut from Activity to GMail label  
+ * - Better UI/Configuration interaction
+ * -- Start service automatically after opening if already configured
+ * -- Allow stopping service without closing to configure service
+ * - Error management, particularly:
+ * -- Wrong Google userid / password
+ * -- Wrong label
+ * - Notification sound
+ * - Customizable notification
+ */
 
 public class Escribime extends Activity {
-    final AndroidHttpClient http = AndroidHttpClient.newInstance("CygX1 browser");
-    
-    String userid = "jcerruti";
-    String password = "xxx";
-    String label = "other";
+	public static final String PREFS_NAME = "EscribimePrefs";
+	
+	String userid, password, label;
+	int updateInterval;
+	EditText etUserid, etPassword, etLabel, etUpdateInterval;
+	SeekBar bar;
 
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        System.setProperty("org.xml.sax.driver","org.xmlpull.v1.sax2.Driver");
-        
-        final Button tryButton = (Button) findViewById(R.id.Button01);
-        tryButton.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-				new Thread(new Runnable() {
-					public void run() {
-						String text = "default";
-						try {
-						    HttpUriRequest request = new HttpGet("https://mail.google.com/mail/feed/atom/"+ label);
-					        request.addHeader("Authorization", "Basic " + new String(Base64.encode((userid + ":" + password).getBytes(),Base64.NO_WRAP)));
-							HttpResponse response = http.execute(request);
-							InputStream is = response.getEntity().getContent();
-							
-							DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-							DocumentBuilder db = dbf.newDocumentBuilder();
-							Document doc = db.parse(new InputSource(is));
-							doc.getDocumentElement().normalize();
-							NodeList nodeList = doc.getElementsByTagName("fullcount");
-							Node node = nodeList.item(0);
-							int unread = Integer.parseInt(node.getTextContent());
-							text = "There are " + unread + " unread messages";
-							//text = slurp(is);
-						} catch (IOException e) {
-							text = e.toString();
-						} catch (ParserConfigurationException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (SAXException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						final String theText = text;
-						Escribime.this.runOnUiThread(new Runnable() {
-							public void run() {
-								Toast.makeText(Escribime.this, theText, Toast.LENGTH_SHORT).show();
-							}
-						});
-					}
-				}).start();
+
+		final Intent svc = new Intent( this, EscribimeService.class);
+		etUserid = (EditText)findViewById(R.id.ETUserid);
+		etPassword = (EditText)findViewById(R.id.ETPassword);
+		etLabel = (EditText)findViewById(R.id.ETLabel);
+		etUpdateInterval = (EditText)findViewById(R.id.ETUpdateInterval);
+		bar = (SeekBar)findViewById(R.id.SeekBar01);
+		loadPreferences();
+		
+		//	Tie SeekBar to EditText for Update Interval
+		bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+			@Override
+			public void onStopTrackingTouch(SeekBar seekBar) {}
+			@Override
+			public void onStartTrackingTouch(SeekBar seekBar) {}
+			@Override
+			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+				etUpdateInterval.setText(Integer.toString(progress));
 			}
 		});
+		etLabel.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+			@Override
+			public void onFocusChange(View v, boolean hasFocus) {
+				try {
+					bar.setProgress( Integer.parseInt(etLabel.getText().toString().trim()));
+				} catch( Exception e) {}
+			}
+		});
+
+		//	Start service
+        final Button startButton = (Button) findViewById(R.id.Button01);
+        startButton.setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				savePreferences();
+				setAllEnabled( false);
+				EscribimeService.initialize( Escribime.this, userid, password, label, updateInterval);
+				Escribime.this.startService(svc);
+			}
+		});
+
+        //	Stop service and close
+        final Button stopButton = (Button) findViewById(R.id.Button02);
+        stopButton.setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				Escribime.this.stopService(svc);
+				Escribime.this.finish();
+			}
+		});       
     }
     
-    public static String slurp(InputStream in) throws IOException {
-        StringBuffer out = new StringBuffer();
-        byte[] b = new byte[4096];
-        for (int n; (n = in.read(b)) != -1;) {
-            out.append(new String(b, 0, n));
-        }
-        return out.toString();
+    protected void setAllEnabled( boolean enabled) {
+    	etUserid.setEnabled( enabled);
+    	etPassword.setEnabled( enabled);
+    	etLabel.setEnabled( enabled);
+    	etUpdateInterval.setEnabled( enabled);
+    	bar.setEnabled( enabled);
     }
+    
+    protected void loadPreferences() {
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        userid = settings.getString("userid", "");
+        password = settings.getString("password", "");
+        label = settings.getString("label", "");
+        updateInterval = settings.getInt("updateInterval", 60);
+        if(!"".equals(userid)) { etUserid.setText( userid); }
+        if(!"".equals(password)) { etPassword.setText( password); }
+        if(!"".equals(label)) { etLabel.setText( label); }
+        etUpdateInterval.setText( Integer.toString(updateInterval));
+        bar.setProgress( updateInterval);
+    }
+    
+    protected void savePreferences() {
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        userid = etUserid.getText().toString().trim();
+        password = etPassword.getText().toString().trim();
+        label = etLabel.getText().toString().trim();
+        updateInterval = Integer.parseInt(etUpdateInterval.getText().toString().trim());
+        editor.putString("userid", userid);
+        editor.putString("password", password);
+        editor.putString("label", label);
+        editor.putInt("updateInterval", updateInterval);
+        editor.commit();
+    }
+
+	@Override
+	protected void onStop() {
+		savePreferences();
+		super.onStop();
+	}
 }

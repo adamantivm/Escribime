@@ -4,10 +4,19 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     >
-<TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:text="@string/hello"
-    />
-<Button android:id="@+id/Button01" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Try"></Button>
+
+
+<Button android:id="@+id/Button02" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Stop and Exit"></Button>
+
+<Button android:id="@+id/Button01" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Login and Start"></Button><TextView android:id="@+id/TextView01" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GMail userid"></TextView><EditText android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/ETUserid" android:minWidth="40mm" android:inputType="textEmailAddress"></EditText>
+
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="10mm" android:id="@+id/TextView02" android:text="GMail password"></TextView>
+<EditText android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/ETPassword" android:minWidth="40mm" android:isScrollContainer="false" android:inputType="textPassword"></EditText>
+<TextView android:id="@+id/TextView03" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GMail label"></TextView>
+<EditText android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/ETLabel" android:minWidth="40mm"></EditText>
+
+
+<TextView android:id="@+id/TextView04" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Update Interval (in seconds)"></TextView><SeekBar android:id="@+id/SeekBar01" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="40mm" android:max="500" android:progress="60"></SeekBar>
+
+<EditText android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/ETUpdateInterval" android:minWidth="10mm"></EditText>
 </LinearLayout>

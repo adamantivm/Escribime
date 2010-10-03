@@ -12,7 +12,8 @@
             </intent-filter>
         </activity>
 
-    </application>
+    <service android:name="EscribimeService"></service>
+</application>
 
 
 
