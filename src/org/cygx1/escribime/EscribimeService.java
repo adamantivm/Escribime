@@ -70,6 +70,17 @@ public class EscribimeService extends Service {
 		long when = System.currentTimeMillis();
 		notification = new Notification(icon, tickerText, when);
 		notification.flags |= Notification.FLAG_NO_CLEAR;
+		notification.flags |= Notification.FLAG_SHOW_LIGHTS;
+
+		if(unread > 0) {
+			notification.ledARGB = 0xFFFF0000;
+			notification.ledOnMS = 300;
+			notification.ledOffMS = 1000;
+		} else {
+			notification.ledARGB = 0;
+			notification.ledOnMS = 0;
+			notification.ledOffMS = 0;
+		}
 		
 		Context context = getApplicationContext();
 		CharSequence contentTitle = "Escribime";
