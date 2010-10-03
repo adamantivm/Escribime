@@ -78,7 +78,7 @@ public class Escribime extends Activity {
 			public void onClick(View v) {
 				savePreferences();
 				setAllEnabled( false);
-				EscribimeService.initialize( Escribime.this, userid, password, label, updateInterval);
+				EscribimeService.initialize( Escribime.this);
 				Escribime.this.startService(svc);
 			}
 		});

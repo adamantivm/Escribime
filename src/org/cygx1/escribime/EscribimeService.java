@@ -25,6 +25,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.http.AndroidHttpClient;
 import android.os.IBinder;
 import android.util.Base64;
@@ -51,15 +52,19 @@ public class EscribimeService extends Service {
 		return null;
 	}
 	
-	public static void initialize(Activity a, String u, String p, String l, int ui) {
+	public static void initialize(Activity a) {
 		activity = a;
-		userid = u;
-		password = p;
-		label = l;
-		updateInterval = ui;
 	}
 	
-	private void updateNotification( int unread) {
+   protected void loadPreferences() {
+        SharedPreferences settings = getSharedPreferences( Escribime.PREFS_NAME, 0);
+        userid = settings.getString("userid", "");
+        password = settings.getString("password", "");
+        label = settings.getString("label", "");
+        updateInterval = settings.getInt("updateInterval", 60);
+   }
+
+   private void updateNotification( int unread) {
 		int icon = unread == 0 ? R.drawable.icon : R.drawable.happyness;
 		CharSequence tickerText = "";
 		long when = System.currentTimeMillis();
@@ -70,7 +75,8 @@ public class EscribimeService extends Service {
 		CharSequence contentTitle = "Escribime";
 		CharSequence contentText = "unread = " + unread;
 		Intent notificationIntent = new Intent( context, Escribime.class);
-		PendingIntent contentIntent = PendingIntent.getActivity( EscribimeService.activity, 0, notificationIntent, 0);
+		//PendingIntent contentIntent = PendingIntent.getActivity( EscribimeService.activity, 0, notificationIntent, 0);
+		PendingIntent contentIntent = PendingIntent.getActivity( context, 0, notificationIntent, 0);
 		notification.setLatestEventInfo( context, contentTitle, contentText, contentIntent);
 		mNotificationManager.notify( NOTIFICATION_ID, notification);
 	}
@@ -85,8 +91,10 @@ public class EscribimeService extends Service {
         
         String ns = Context.NOTIFICATION_SERVICE;
 		mNotificationManager = (NotificationManager) getSystemService(ns);
+
+		loadPreferences();
 	
-		Log.d(EscribimeService.class.getCanonicalName(), "Service started");
+		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);
 		timer.scheduleAtFixedRate( new TimerTask() {
 			public void run() {
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
