@@ -16,6 +16,7 @@ import android.widget.SeekBar;
  *
  * TODO
  * - Take credentials from Google account in the phone
+ * - Show whether service is running from Activity
  * - Hook up to synchronization service and update via that channel (to avoid more connections to the web)
  * - BUG: Clicking on the Notification icon opens a *new* Activity, instead of going to the old one
  * - Unread count as icon

@@ -46,6 +46,8 @@ public class EscribimeService extends Service {
     
     Notification notification;
     NotificationManager mNotificationManager;
+    
+    int lastUnread = 0;
 
 	@Override
 	public IBinder onBind(Intent arg0) {
@@ -65,28 +67,20 @@ public class EscribimeService extends Service {
    }
 
    private void updateNotification( int unread) {
-		int icon = unread == 0 ? R.drawable.sadness : R.drawable.happyness;
-		CharSequence tickerText = "";
+		int icon = R.drawable.happyness;
+		CharSequence tickerText = "unread = " + unread;
 		long when = System.currentTimeMillis();
 		notification = new Notification(icon, tickerText, when);
-		notification.flags |= Notification.FLAG_NO_CLEAR;
 		notification.flags |= Notification.FLAG_SHOW_LIGHTS;
-
-		if(unread > 0) {
-			notification.ledARGB = 0xFFFF0000;
-			notification.ledOnMS = 300;
-			notification.ledOffMS = 1000;
-		} else {
-			notification.ledARGB = 0;
-			notification.ledOnMS = 0;
-			notification.ledOffMS = 0;
-		}
+		notification.ledARGB = 0xFFFF0000;
+		notification.ledOnMS = 300;
+		notification.ledOffMS = 1000;
 		
 		Context context = getApplicationContext();
 		CharSequence contentTitle = "Escribime";
 		CharSequence contentText = "unread = " + unread;
 		Intent notificationIntent = new Intent( context, Escribime.class);
-		//PendingIntent contentIntent = PendingIntent.getActivity( EscribimeService.activity, 0, notificationIntent, 0);
+
 		PendingIntent contentIntent = PendingIntent.getActivity( context, 0, notificationIntent, 0);
 		notification.setLatestEventInfo( context, contentTitle, contentText, contentIntent);
 		mNotificationManager.notify( NOTIFICATION_ID, notification);
@@ -110,7 +104,12 @@ public class EscribimeService extends Service {
 			public void run() {
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
 				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
-				updateNotification( unread);
+				if( unread > 0) {
+					updateNotification( unread);
+				} else {
+					clearNotification();
+				}
+				lastUnread = unread;
 			}
 		}, 0, updateInterval * 1000);
 		Log.d("EscribimeService","Monotoring label " + label + " every " + updateInterval + " seconds");
