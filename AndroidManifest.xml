@@ -12,9 +12,17 @@
         </activity>
 
     <service android:name="EscribimeService"></service>
+
+	<receiver android:name="EscribimeReceiver" android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+	    <intent-filter>
+	       <action android:name="android.intent.action.BOOT_COMPLETED" />
+	       <category android:name="android.intent.category.LAUNCHER" />
+	    </intent-filter>
+	</receiver>
 </application>
 
 
 
 <uses-permission android:name="android.permission.INTERNET"></uses-permission>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"></uses-permission>
 </manifest> 

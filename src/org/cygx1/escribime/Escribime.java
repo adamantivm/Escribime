@@ -11,6 +11,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SeekBar;
 
@@ -38,8 +39,11 @@ public class Escribime extends Activity {
 	
 	String userid, password, label;
 	int updateInterval;
+	boolean autoStart;
 	EditText etUserid, etPassword, etLabel, etUpdateInterval;
 	SeekBar bar;
+	CheckBox cbAutoStart;
+	
 	ComponentName serviceName = null;
 
     /** Called when the activity is first created. */
@@ -54,6 +58,7 @@ public class Escribime extends Activity {
 		etLabel = (EditText)findViewById(R.id.ETLabel);
 		etUpdateInterval = (EditText)findViewById(R.id.ETUpdateInterval);
 		bar = (SeekBar)findViewById(R.id.SeekBar01);
+		cbAutoStart = (CheckBox)findViewById(R.id.CheckBoxStartup);
 		loadPreferences();
 		
 		//	Tie SeekBar to EditText for Update Interval
@@ -116,11 +121,13 @@ public class Escribime extends Activity {
         password = settings.getString("password", "");
         label = settings.getString("label", "");
         updateInterval = settings.getInt("updateInterval", 60);
+        autoStart = settings.getBoolean("autoStart", true);
         if(!"".equals(userid)) { etUserid.setText( userid); }
         if(!"".equals(password)) { etPassword.setText( password); }
         if(!"".equals(label)) { etLabel.setText( label); }
         etUpdateInterval.setText( Integer.toString(updateInterval));
         bar.setProgress( updateInterval);
+        cbAutoStart.setChecked( autoStart);
     }
     
     protected void savePreferences() {
@@ -130,10 +137,12 @@ public class Escribime extends Activity {
         password = etPassword.getText().toString().trim();
         label = etLabel.getText().toString().trim();
         updateInterval = Integer.parseInt(etUpdateInterval.getText().toString().trim());
+        autoStart = cbAutoStart.isChecked();
         editor.putString("userid", userid);
         editor.putString("password", password);
         editor.putString("label", label);
         editor.putInt("updateInterval", updateInterval);
+        editor.putBoolean("autoStart", autoStart);
         editor.commit();
     }
 

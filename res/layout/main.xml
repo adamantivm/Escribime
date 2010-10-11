@@ -19,4 +19,5 @@
 <TextView android:id="@+id/TextView04" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Update Interval (in seconds)"></TextView><SeekBar android:id="@+id/SeekBar01" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="40mm" android:max="500" android:progress="60"></SeekBar>
 
 <EditText android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/ETUpdateInterval" android:minWidth="10mm"></EditText>
+<CheckBox android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/CheckBoxStartup" android:text="Start on power on"></CheckBox>
 </LinearLayout>

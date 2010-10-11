@@ -17,6 +17,7 @@ public final class R {
     public static final class id {
         public static final int Button01=0x7f050001;
         public static final int Button02=0x7f050000;
+        public static final int CheckBoxStartup=0x7f05000b;
         public static final int ETLabel=0x7f050007;
         public static final int ETPassword=0x7f050005;
         public static final int ETUpdateInterval=0x7f05000a;
