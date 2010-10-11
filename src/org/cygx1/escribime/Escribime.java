@@ -1,9 +1,12 @@
 package org.cygx1.escribime;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -16,9 +19,7 @@ import android.widget.SeekBar;
  *
  * TODO
  * - Take credentials from Google account in the phone
- * - Show whether service is running from Activity
  * - Hook up to synchronization service and update via that channel (to avoid more connections to the web)
- * - BUG: Clicking on the Notification icon opens a *new* Activity, instead of going to the old one
  * - Unread count as icon
  * - Concealed shortcut from Activity to GMail label  
  * - Better UI/Configuration interaction
@@ -29,6 +30,7 @@ import android.widget.SeekBar;
  * -- Wrong label
  * - Notification sound
  * - Customizable notification
+ * - Start service on phone reboot
  */
 
 public class Escribime extends Activity {
@@ -38,6 +40,7 @@ public class Escribime extends Activity {
 	int updateInterval;
 	EditText etUserid, etPassword, etLabel, etUpdateInterval;
 	SeekBar bar;
+	ComponentName serviceName = null;
 
     /** Called when the activity is first created. */
     @Override
@@ -80,7 +83,7 @@ public class Escribime extends Activity {
 				savePreferences();
 				setAllEnabled( false);
 				EscribimeService.initialize( Escribime.this);
-				Escribime.this.startService(svc);
+				serviceName = Escribime.this.startService( svc);
 			}
 		});
 
@@ -91,7 +94,12 @@ public class Escribime extends Activity {
 				Escribime.this.stopService(svc);
 				Escribime.this.finish();
 			}
-		});       
+		});
+
+        if( EscribimeService.running) {
+        	Log.d("Escribime", "service was already running");
+        	setAllEnabled( false);
+        }
     }
     
     protected void setAllEnabled( boolean enabled) {

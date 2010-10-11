@@ -38,6 +38,8 @@ public class EscribimeService extends Service {
     static String password;
     static String label;
     static int updateInterval;
+    
+    static boolean running = false;
 
     final AndroidHttpClient http = AndroidHttpClient.newInstance("CygX1 browser");
     private Timer timer = new Timer();
@@ -113,6 +115,8 @@ public class EscribimeService extends Service {
 			}
 		}, 0, updateInterval * 1000);
 		Log.d("EscribimeService","Monotoring label " + label + " every " + updateInterval + " seconds");
+		
+		EscribimeService.running = true;
 	}
 	
 	private int fetchUnread(String userid, String password, String label) {
