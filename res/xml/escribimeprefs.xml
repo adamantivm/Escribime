@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-	<EditTextPreference android:title="Email"
-		android:summary="Your GMail ID" android:key="emailPref"/>
-	<EditTextPreference android:summary="GMail password"
-		android:title="Password" android:key="passwordPref"/>
-	
-<EditTextPreference android:title="GMail label" android:summary="Label to check for notification" android:key="labelPref"></EditTextPreference>
+	<EditTextPreference android:key="@string/emailPref"
+		android:persistent="true" android:title="Gmail ID" />
+	<EditTextPreference android:key="@string/passwordPref"
+		android:persistent="true" android:title="Gmail password" android:password="true" />
+
+	<EditTextPreference android:title="GMail label"
+		android:summary="Label to check for notification" android:key="@string/labelPref"
+		android:persistent="true"></EditTextPreference>
+	<ListPreference android:key="@string/intervalPref"
+		android:summary="How often to check for new messages" android:title="Poll interval"
+		android:persistent="true" android:entryValues="@array/IntervalValues"
+		android:entries="@array/Intervals" android:defaultValue="60 seconds"></ListPreference>
+<CheckBoxPreference android:title="Start on power on" android:summary="Check to start when phone starts" android:summaryOff="Must be started manually" android:summaryOn="Will start when phone starts" android:key="@string/startPref"></CheckBoxPreference>
 </PreferenceScreen>

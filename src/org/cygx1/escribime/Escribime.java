@@ -11,235 +11,169 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.http.AndroidHttpClient;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
-import android.widget.EditText;
-import android.widget.SeekBar;
 import android.widget.ToggleButton;
 
 /***********************
  * @author adamantivm
- *
- * TODO
- * - Take credentials from Google account in the phone
- * - Hook up to synchronization service and update via that channel (to avoid more connections to the web)
- * - Unread count as icon
- * - Concealed shortcut from Activity to GMail label  
- * - Better UI/Configuration interaction
- * -- Start service automatically after opening if already configured
- * -- Allow stopping service without closing to configure service
- * - Error management, particularly:
- * -- Wrong Google userid / password
- * -- Wrong label
- * - Notification sound
- * - Customizable notification
- * - Start service on phone reboot
  * 
- * - Hide email/password settings behind the menu button
+ *  TODO 
+ *  - Take credentials from Google account in the phone 
+ *  - Hook up to synchronization service and update via that channel (to avoid more
+ *    connections to the web)
+ *  - Unread count as icon
+ *  - Concealed shortcut from Activity to GMail label
+ *  - Better UI/Configuration interaction
+ *  -- Start service automatically after opening if already configured
+ *  -- Allow stopping service without closing to configure service
+ *  - Error management, particularly:
+ *  -- Wrong Google userid / password
+ *  -- Wrong label
+ *  - Notification sound
+ *  - Customizable notification
+ *  - Start service on phone reboot
+ * 
+ *  - Hide email/password settings behind the menu button
  */
 
 public class Escribime extends Activity {
 	public static final String PREFS_NAME = "EscribimePrefs";
-	private static final int EDIT_ID = 0;
-	
-	String userid, password, label;
-	int updateInterval;
-	boolean autoStart;
-	EditText etUserid, etPassword, etLabel, etUpdateInterval;
-	SeekBar bar;
-	CheckBox cbAutoStart;
-	
+	private static final int PREFS_ID = 0;
+
 	ComponentName serviceName = null;
-	
-	// TL: sorry, we should probably reuse a single browser rather than creating one
+
+	// TL: sorry, we should probably reuse a single browser rather than creating
+	// one
 	// here and one in the EscribimeService class
-    final AndroidHttpClient http = AndroidHttpClient.newInstance("CygX1 browser");
+	final AndroidHttpClient http = AndroidHttpClient
+			.newInstance("CygX1 browser");
 
-    /** Called when the activity is first created. */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+	/** Called when the activity is first created. */
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
 
-		final Intent svc = new Intent( this, EscribimeService.class);
-		etUserid = (EditText)findViewById(R.id.ETUserid);
-		etPassword = (EditText)findViewById(R.id.ETPassword);
-		etLabel = (EditText)findViewById(R.id.ETLabel);
-		etUpdateInterval = (EditText)findViewById(R.id.ETUpdateInterval);
-		bar = (SeekBar)findViewById(R.id.SeekBar01);
-		cbAutoStart = (CheckBox)findViewById(R.id.CheckBoxStartup);
-		loadPreferences();
-		
-		//	Tie SeekBar to EditText for Update Interval
-		bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-			@Override
-			public void onStopTrackingTouch(SeekBar seekBar) {}
-			@Override
-			public void onStartTrackingTouch(SeekBar seekBar) {}
-			@Override
-			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-				etUpdateInterval.setText(Integer.toString(progress));
-			}
-		});
-		etLabel.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-			@Override
-			public void onFocusChange(View v, boolean hasFocus) {
-				try {
-					bar.setProgress( Integer.parseInt(etLabel.getText().toString().trim()));
-				} catch( Exception e) {}
-			}
-		});
+		final Intent svc = new Intent(this, EscribimeService.class);
 
-		//	Start service
-        final Button startButton = (Button) findViewById(R.id.Button01);
-        startButton.setOnClickListener(new OnClickListener() {
+		// Start service
+		final Button startButton = (Button) findViewById(R.id.Button01);
+		startButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
-				savePreferences();
-				setAllEnabled( false);
-				EscribimeService.initialize( Escribime.this);
-				serviceName = Escribime.this.startService( svc);
+				EscribimeService.initialize(Escribime.this);
+				serviceName = Escribime.this.startService(svc);
 			}
 		});
 
-        //	Stop service and close
-        final Button stopButton = (Button) findViewById(R.id.Button02);
-        stopButton.setOnClickListener(new OnClickListener() {
+		// Stop service and close
+		final Button stopButton = (Button) findViewById(R.id.Button02);
+		stopButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
 				Escribime.this.stopService(svc);
 				Escribime.this.finish();
 			}
 		});
-        
-        // TL: Handle the online toggle
-        final ToggleButton onlineButton = (ToggleButton) findViewById(R.id.ToggleButton01);
-        onlineButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-			
+
+		// TL: Handle the online toggle
+		final ToggleButton onlineButton = (ToggleButton) findViewById(R.id.ToggleButton01);
+		onlineButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+
 			@Override
-			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+			public void onCheckedChanged(CompoundButton buttonView,
+					boolean isChecked) {
 				Log.d("Escribime", "Toggle button toggled to: " + isChecked);
 				setMyStatus(isChecked);
 			}
 		});
 
-        if( EscribimeService.running) {
-        	Log.d("Escribime", "service was already running");
-        	setAllEnabled( false);
+		if (EscribimeService.running) {
+			Log.d("Escribime", "service was already running");
+		}
+		
+		// If we haven't set our preferences yet, start with that view
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String email = prefs.getString(getString(R.string.emailPref), null);
+        if (email == null) {
+        	startActivity(new Intent(this, EscribimePreferences.class));
         }
-    }
-    
-    protected void setAllEnabled( boolean enabled) {
-    	etUserid.setEnabled( enabled);
-    	etPassword.setEnabled( enabled);
-    	etLabel.setEnabled( enabled);
-    	etUpdateInterval.setEnabled( enabled);
-    	bar.setEnabled( enabled);
-    }
-    
-    protected void loadPreferences() {
-        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-        userid = settings.getString("userid", "");
-        password = settings.getString("password", "");
-        label = settings.getString("label", "");
-        updateInterval = settings.getInt("updateInterval", 60);
-        autoStart = settings.getBoolean("autoStart", true);
-        if(!"".equals(userid)) { etUserid.setText( userid); }
-        if(!"".equals(password)) { etPassword.setText( password); }
-        if(!"".equals(label)) { etLabel.setText( label); }
-        etUpdateInterval.setText( Integer.toString(updateInterval));
-        bar.setProgress( updateInterval);
-        cbAutoStart.setChecked( autoStart);
-    }
-    
-    protected void savePreferences() {
-        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        userid = etUserid.getText().toString().trim();
-        password = etPassword.getText().toString().trim();
-        label = etLabel.getText().toString().trim();
-        updateInterval = Integer.parseInt(etUpdateInterval.getText().toString().trim());
-        autoStart = cbAutoStart.isChecked();
-        editor.putString("userid", userid);
-        editor.putString("password", password);
-        editor.putString("label", label);
-        editor.putInt("updateInterval", updateInterval);
-        editor.putBoolean("autoStart", autoStart);
-        editor.commit();
-    }
+	}
 
 	@Override
 	protected void onStop() {
-		savePreferences();
 		super.onStop();
 	}
-	
+
 	// ----------------------------------------------------------------------------
 	// Online status
-	
+
 	/**
 	 * Sends an HTTP request to the status server to update my status
 	 */
 	class StatusUpdate extends Thread implements Runnable {
-    	boolean availability;
-    	String email;
-    	
+		boolean availability;
+		String email;
+		
 		@Override
 		public void run() {
-			Log.d("Escribime", "Setting availablity for " + email + " to " + availability);
-		    HttpUriRequest request = new HttpGet("http://ofb.net:3300/status/update?email="+ userid +
-		    		"&available=" + (availability ? "true" : "false"));
-		    
-		    try {
-		    	http.execute(request);
+			Log.d("Escribime", "Setting availablity for " + email + " to "
+					+ availability);
+			HttpUriRequest request = new HttpGet(
+					"http://ofb.net:3300/status/update?email=" + email
+							+ "&available=" + (availability ? "true" : "false"));
+
+			try {
+				http.execute(request);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				Log.d("Escribime", "Error updating status:" + e);
 				return;
 			}
 		}
-		
+
 		// Uh, how am I supposed to pass data into a thread?
 		void setData(boolean avail, String email) {
 			this.availability = avail;
 			this.email = email;
 		}
-    };
-	
-	void setMyStatus(boolean availability) {
-		// TL: can I assume that userid has already been set at this point, or do I
-		// need to retrieve it from settings each time?
-        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-        userid = settings.getString("userid", "");
+	};
 
-        // Need to create a new thread to do HTTP requests
-        StatusUpdate t = new StatusUpdate();
-        t.setData(availability, userid);
-        t.start();
+	void setMyStatus(boolean availability) {		
+		// Get my email address out of preferences
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String email = prefs.getString(getString(R.string.emailPref), null);
+
+		// Need to create a new thread to do HTTP requests
+		StatusUpdate t = new StatusUpdate();
+		t.setData(availability, email);
+		t.start();
 	}
-	
-    /**
-     * Handle the preferences menu
-     */
-    public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(Menu.NONE, EDIT_ID, Menu.NONE, "Prefs")
-                .setIcon(android.R.drawable.ic_menu_preferences)
-                .setAlphabeticShortcut('p');
-        return(super.onCreateOptionsMenu(menu));
-    }
 
-    public boolean onOptionsItemSelected(MenuItem item) {
-                switch (item.getItemId()) {
-                case EDIT_ID:
-                        startActivity(new Intent(this, EscribimePreferences.class));
-                        return (true);
-                }
-        return(super.onOptionsItemSelected(item));
-    }
+	/**
+	 * Handle the preferences menu
+	 */
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		menu.add(Menu.NONE, PREFS_ID, Menu.NONE, "Prefs")
+				.setIcon(android.R.drawable.ic_menu_preferences)
+				.setAlphabeticShortcut('p');
+		return (super.onCreateOptionsMenu(menu));
+	}
+
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case PREFS_ID:
+			startActivity(new Intent(this, EscribimePreferences.class));
+			return (true);
+		}
+		return (super.onOptionsItemSelected(item));
+	}
 
 }

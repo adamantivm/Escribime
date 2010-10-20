@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.http.AndroidHttpClient;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.util.Base64;
 import android.util.Log;
 
@@ -61,11 +62,12 @@ public class EscribimeService extends Service {
 	}
 	
    protected void loadPreferences() {
-        SharedPreferences settings = getSharedPreferences( Escribime.PREFS_NAME, 0);
-        userid = settings.getString("userid", "");
-        password = settings.getString("password", "");
-        label = settings.getString("label", "");
-        updateInterval = settings.getInt("updateInterval", 60);
+		// Get our values out of preferences
+       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+       userid = prefs.getString(getString(R.string.emailPref), null);
+       password = prefs.getString(getString(R.string.passwordPref), null);
+       label = prefs.getString(getString(R.string.labelPref), null);
+       updateInterval = Integer.parseInt(prefs.getString(getString(R.string.intervalPref), null));
    }
 
    private void updateNotification(int unread, int status) {
@@ -127,6 +129,8 @@ public class EscribimeService extends Service {
         String ns = Context.NOTIFICATION_SERVICE;
 		mNotificationManager = (NotificationManager) getSystemService(ns);
 
+		// TL: we should load preferences each time we poll, otherwise if they have been changed
+		// since the service started, we won't pick up the new values
 		loadPreferences();
 	
 		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);

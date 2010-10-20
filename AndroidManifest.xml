@@ -1,29 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      package="org.cygx1.escribime"
-      android:versionCode="1" android:versionName="1.15">
-    <application android:icon="@drawable/happyness" android:label="@string/app_name">
-        <activity android:name=".Escribime"
-                  android:label="@string/app_name" android:launchMode="singleInstance"
-                  android:windowSoftInputMode="stateUnchanged|adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+	package="org.cygx1.escribime" android:versionCode="1"
+	android:versionName="1.15">
+	<application android:icon="@drawable/happyness"
+		android:label="@string/app_name">
+		<activity android:name=".Escribime" android:label="@string/app_name"
+			android:launchMode="singleInstance" android:windowSoftInputMode="stateUnchanged|adjustResize">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
 
-    <service android:name="EscribimeService"></service>
+		<activity android:name=".EscribimePreferences" android:label="@string/app_prefs">
+		</activity>
 
-	<receiver android:name="EscribimeReceiver" android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
-	    <intent-filter>
-	       <action android:name="android.intent.action.BOOT_COMPLETED" />
-	       <category android:name="android.intent.category.LAUNCHER" />
-	    </intent-filter>
-	</receiver>
-</application>
+		<service android:name="EscribimeService"></service>
+
+		<receiver android:name="EscribimeReceiver"
+			android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+			<intent-filter>
+				<action android:name="android.intent.action.BOOT_COMPLETED" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</receiver>
+	</application>
 
 
 
-<uses-permission android:name="android.permission.INTERNET"></uses-permission>
-<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"></uses-permission>
+	<uses-permission android:name="android.permission.INTERNET"></uses-permission>
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"></uses-permission>
 </manifest> 
