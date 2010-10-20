@@ -1,19 +1,28 @@
 package org.cygx1.escribime;
 
+import java.io.IOException;
+
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpUriRequest;
+
 import android.app.Activity;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.http.AndroidHttpClient;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.EditText;
 import android.widget.SeekBar;
+import android.widget.ToggleButton;
 
 /***********************
  * @author adamantivm
@@ -32,10 +41,13 @@ import android.widget.SeekBar;
  * - Notification sound
  * - Customizable notification
  * - Start service on phone reboot
+ * 
+ * - Hide email/password settings behind the menu button
  */
 
 public class Escribime extends Activity {
 	public static final String PREFS_NAME = "EscribimePrefs";
+	private static final int EDIT_ID = 0;
 	
 	String userid, password, label;
 	int updateInterval;
@@ -45,6 +57,10 @@ public class Escribime extends Activity {
 	CheckBox cbAutoStart;
 	
 	ComponentName serviceName = null;
+	
+	// TL: sorry, we should probably reuse a single browser rather than creating one
+	// here and one in the EscribimeService class
+    final AndroidHttpClient http = AndroidHttpClient.newInstance("CygX1 browser");
 
     /** Called when the activity is first created. */
     @Override
@@ -100,6 +116,17 @@ public class Escribime extends Activity {
 				Escribime.this.finish();
 			}
 		});
+        
+        // TL: Handle the online toggle
+        final ToggleButton onlineButton = (ToggleButton) findViewById(R.id.ToggleButton01);
+        onlineButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+			
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				Log.d("Escribime", "Toggle button toggled to: " + isChecked);
+				setMyStatus(isChecked);
+			}
+		});
 
         if( EscribimeService.running) {
         	Log.d("Escribime", "service was already running");
@@ -151,4 +178,68 @@ public class Escribime extends Activity {
 		savePreferences();
 		super.onStop();
 	}
+	
+	// ----------------------------------------------------------------------------
+	// Online status
+	
+	/**
+	 * Sends an HTTP request to the status server to update my status
+	 */
+	class StatusUpdate extends Thread implements Runnable {
+    	boolean availability;
+    	String email;
+    	
+		@Override
+		public void run() {
+			Log.d("Escribime", "Setting availablity for " + email + " to " + availability);
+		    HttpUriRequest request = new HttpGet("http://ofb.net:3300/status/update?email="+ userid +
+		    		"&available=" + (availability ? "true" : "false"));
+		    
+		    try {
+		    	http.execute(request);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				Log.d("Escribime", "Error updating status:" + e);
+				return;
+			}
+		}
+		
+		// Uh, how am I supposed to pass data into a thread?
+		void setData(boolean avail, String email) {
+			this.availability = avail;
+			this.email = email;
+		}
+    };
+	
+	void setMyStatus(boolean availability) {
+		// TL: can I assume that userid has already been set at this point, or do I
+		// need to retrieve it from settings each time?
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        userid = settings.getString("userid", "");
+
+        // Need to create a new thread to do HTTP requests
+        StatusUpdate t = new StatusUpdate();
+        t.setData(availability, userid);
+        t.start();
+	}
+	
+    /**
+     * Handle the preferences menu
+     */
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(Menu.NONE, EDIT_ID, Menu.NONE, "Prefs")
+                .setIcon(android.R.drawable.ic_menu_preferences)
+                .setAlphabeticShortcut('p');
+        return(super.onCreateOptionsMenu(menu));
+    }
+
+    public boolean onOptionsItemSelected(MenuItem item) {
+                switch (item.getItemId()) {
+                case EDIT_ID:
+                        startActivity(new Intent(this, EscribimePreferences.class));
+                        return (true);
+                }
+        return(super.onOptionsItemSelected(item));
+    }
+
 }

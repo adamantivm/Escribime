@@ -68,15 +68,43 @@ public class EscribimeService extends Service {
         updateInterval = settings.getInt("updateInterval", 60);
    }
 
-   private void updateNotification( int unread) {
-		int icon = R.drawable.happyness;
+   private void updateNotification(int unread, int status) {
+	    int icon;
+	    switch (status) {
+	    case 1:
+	    	icon = R.drawable.happyness1;
+	    	break;
+	    case 2:
+	    	icon = R.drawable.happyness2;
+	    	break;
+	    case 3:
+	    	icon = R.drawable.happyness3;
+	    	break;
+	    case 4:
+	    	icon = R.drawable.happyness4;
+	    	break;
+	    case 5:
+	    	icon = R.drawable.happyness5;
+	    	break;
+	    case 6:
+	    	icon = R.drawable.happyness6;
+	    	break;
+	    case 7:
+	    	icon = R.drawable.happyness7;
+	    	break;
+	    default:
+	    	icon = R.drawable.happyness;
+	    }
 		CharSequence tickerText = "unread = " + unread;
 		long when = System.currentTimeMillis();
 		notification = new Notification(icon, tickerText, when);
-		notification.flags |= Notification.FLAG_SHOW_LIGHTS;
-		notification.ledARGB = 0xFFFF0000;
-		notification.ledOnMS = 300;
-		notification.ledOffMS = 1000;
+		// TL: only show light if there are unread messages
+		if (unread > 0) {
+			notification.flags |= Notification.FLAG_SHOW_LIGHTS;
+			notification.ledARGB = 0xFFFF0000;
+			notification.ledOnMS = 300;
+			notification.ledOffMS = 1000;
+		}
 		
 		Context context = getApplicationContext();
 		CharSequence contentTitle = "Escribime";
@@ -104,14 +132,19 @@ public class EscribimeService extends Service {
 		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);
 		timer.scheduleAtFixedRate( new TimerTask() {
 			public void run() {
+				int status = getStatus();
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
 				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
 				if( unread > 0) {
-					updateNotification( unread);
+					status += 4;
+				}
+				if (status > 0) {
+					updateNotification(unread, status);
 				} else {
 					clearNotification();
 				}
 				lastUnread = unread;
+				
 			}
 		}, 0, updateInterval * 1000);
 		Log.d("EscribimeService","Monotoring label " + label + " every " + updateInterval + " seconds");
@@ -150,6 +183,85 @@ public class EscribimeService extends Service {
 		}
 		return ret;
 	}
+	
+	// -------------------------------------------------------------------
+	// For online status
+	
+	/**
+	 * Get our statuses from the online server
+	 * @return 0 if neither is online
+	 *         1 if I am online
+	 *         2 if you are online
+	 *         3 if we are both online
+	 */
+	int getStatus() {
+		// TL: can I assume that userid has already been set at this point, or do I
+		// need to retrieve it from settings each time?
+        SharedPreferences settings = getSharedPreferences(Escribime.PREFS_NAME, 0);
+        userid = settings.getString("userid", "");
+	    HttpUriRequest request = new HttpGet("http://ofb.net:3300/status/q");
+	    Log.d("Escribime", "Fetching status...");
+	    
+	    boolean my_avail = false, you_avail = false;
+	    try {
+	    	HttpResponse response = http.execute(request);
+			InputStream is = response.getEntity().getContent();
+			
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			Document doc = db.parse(new InputSource(is));
+			doc.getDocumentElement().normalize();
+			NodeList nodeList = doc.getElementsByTagName("record");
+			for (int i=0; i<nodeList.getLength(); i++) {
+				Node node = nodeList.item(i);
+				NodeList children = node.getChildNodes();
+				
+				boolean availability = false;
+				String email = null;
+				
+				for (int j=0; j<children.getLength(); j++) {
+					Node child = children.item(j);
+					if (child.getNodeName().toLowerCase().equals("available")) {
+						availability = (child.getTextContent().equals("true"));
+					} else if (child.getNodeName().toLowerCase().equals("email")) {
+						email = child.getTextContent();
+					}
+				}
+				
+				// Got one status field
+				if (email != null) {
+					if (userid.equals(email)) {
+						// it's me
+						my_avail = availability;
+					} else {
+						// it's someone else; I sure hope it's you
+						you_avail = availability;
+					}
+				}
+			}
+
+			is.close();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			Log.d("Escribime", "Error updating status:" + e);
+			return 0;
+		} catch (ParserConfigurationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		if (!my_avail && !you_avail) return 0;
+		else if (!my_avail && you_avail) return 1;
+		else if (my_avail && !you_avail) return 2;
+		else if (my_avail && you_avail) return 3;
+		else return -1;
+	}
+	
+	// ----------------------------------------------------------------
 
 	@Override
 	public void onDestroy() {

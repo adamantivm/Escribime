@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+	<EditTextPreference android:title="Email"
+		android:summary="Your GMail ID" android:key="emailPref"/>
+	<EditTextPreference android:summary="GMail password"
+		android:title="Password" android:key="passwordPref"/>
+	
+<EditTextPreference android:title="GMail label" android:summary="Label to check for notification" android:key="labelPref"></EditTextPreference>
+</PreferenceScreen>
