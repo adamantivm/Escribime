@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.Toast;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ToggleButton;
 
@@ -52,6 +53,7 @@ public class Escribime extends Activity {
 	
 	Button startButton;
 	Button stopButton;
+	Intent svc;
 
 	// TL: sorry, we should probably reuse a single browser rather than creating
 	// one
@@ -75,7 +77,7 @@ public class Escribime extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		final Intent svc = new Intent(this, EscribimeService.class);
+		svc = new Intent(this, EscribimeService.class);
 
 		// Start service
 		startButton = (Button) findViewById(R.id.Button01);
@@ -118,6 +120,12 @@ public class Escribime extends Activity {
         if (email == null) {
         	startActivity(new Intent(this, EscribimePreferences.class));
         }
+	}
+
+	public void dealWithError( String theError) {
+		Toast.makeText( this, theError, Toast.LENGTH_LONG).show();
+		stopService( svc);
+		setRunning( false);
 	}
 
 	@Override
