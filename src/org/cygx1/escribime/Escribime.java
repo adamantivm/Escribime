@@ -49,12 +49,25 @@ public class Escribime extends Activity {
 	private static final int PREFS_ID = 0;
 
 	ComponentName serviceName = null;
+	
+	Button startButton;
+	Button stopButton;
 
 	// TL: sorry, we should probably reuse a single browser rather than creating
 	// one
 	// here and one in the EscribimeService class
 	final AndroidHttpClient http = AndroidHttpClient
 			.newInstance("CygX1 browser");
+	
+	
+	/**
+	 * Enable/disable start/stop buttons, to indicate whether the service
+	 * is running or not
+	 */
+	private void setRunning( boolean running) {
+		startButton.setEnabled( !running);
+		stopButton.setEnabled( running);
+	}
 
 	/** Called when the activity is first created. */
 	@Override
@@ -65,19 +78,22 @@ public class Escribime extends Activity {
 		final Intent svc = new Intent(this, EscribimeService.class);
 
 		// Start service
-		final Button startButton = (Button) findViewById(R.id.Button01);
+		startButton = (Button) findViewById(R.id.Button01);
 		startButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
 				EscribimeService.initialize(Escribime.this);
 				serviceName = Escribime.this.startService(svc);
+				setRunning( true);
 			}
 		});
 
 		// Stop service and close
-		final Button stopButton = (Button) findViewById(R.id.Button02);
+		stopButton = (Button) findViewById(R.id.Button02);
 		stopButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
 				Escribime.this.stopService(svc);
+				EscribimeService.running = false;
+				setRunning( false);
 				Escribime.this.finish();
 			}
 		});
@@ -94,9 +110,7 @@ public class Escribime extends Activity {
 			}
 		});
 
-		if (EscribimeService.running) {
-			Log.d("Escribime", "service was already running");
-		}
+		setRunning( EscribimeService.running);
 		
 		// If we haven't set our preferences yet, start with that view
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
