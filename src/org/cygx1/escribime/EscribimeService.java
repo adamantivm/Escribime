@@ -18,7 +18,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -47,7 +46,7 @@ public class EscribimeService extends Service {
     final AndroidHttpClient http = AndroidHttpClient.newInstance("CygX1 browser");
     private Timer timer = new Timer();
     
-    static Activity activity;
+    static Escribime activity;
     
     Notification notification;
     NotificationManager mNotificationManager;
@@ -59,7 +58,7 @@ public class EscribimeService extends Service {
 		return null;
 	}
 	
-	public static void initialize(Activity a) {
+	public static void initialize(Escribime a) {
 		activity = a;
 	}
 	
@@ -144,6 +143,10 @@ public class EscribimeService extends Service {
 			public void run() {
 				int status = getStatus();
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
+				if( unread == -1 ) {
+					Log.d(EscribimeService.class.getCanonicalName(), "There was an error fetching unread. Discarding");
+					return;
+				}
 				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
 				if( unread > 0) {
 					status += 4;
@@ -157,7 +160,7 @@ public class EscribimeService extends Service {
 				} else {
 					clearNotification();
 				}
-				lastUnread = unread;				
+				lastUnread = unread;
 			}
 		}, 0, updateInterval * 1000);
 		Log.d("EscribimeService","Monotoring label " + label + " every " + updateInterval + " seconds");
@@ -172,6 +175,9 @@ public class EscribimeService extends Service {
 			    HttpUriRequest request = new HttpGet("https://mail.google.com/mail/feed/atom/"+ label);
 		        request.addHeader("Authorization", "Basic " + new String(Base64.encode((userid + ":" + password).getBytes(),Base64.NO_WRAP)));
 				HttpResponse response = http.execute(request);
+				if(response.getStatusLine().getStatusCode() != 200) {
+					throw new Exception(response.getStatusLine().getReasonPhrase());
+				}
 				InputStream is = response.getEntity().getContent();
 				
 				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -183,15 +189,15 @@ public class EscribimeService extends Service {
 				ret = Integer.parseInt(node.getTextContent());
 
 				is.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ParserConfigurationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (SAXException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			} catch (final Exception e) {
+                e.printStackTrace();
+                if( e.toString().contains("Unauthorized")) {
+	                activity.runOnUiThread(new Runnable() {
+	                	public void run() {
+	                		activity.dealWithError( "Can't log-in to GMail. Please check your settings");
+	                	}
+	                });
+                }
 			}
 		}
 		return ret;
