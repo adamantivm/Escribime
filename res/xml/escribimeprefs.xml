@@ -13,4 +13,6 @@
 		android:persistent="true" android:entryValues="@array/IntervalValues"
 		android:entries="@array/Intervals" android:defaultValue="60 seconds"></ListPreference>
 <CheckBoxPreference android:title="Start on power on" android:summary="Check to start when phone starts" android:summaryOff="Must be started manually" android:summaryOn="Will start when phone starts" android:key="@string/startPref"></CheckBoxPreference>
+<CheckBoxPreference android:title="Vibrate" android:summary="Vibrate on new mail" android:key="@string/vibratePref"></CheckBoxPreference>
+
 </PreferenceScreen>

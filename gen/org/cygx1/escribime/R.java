@@ -45,6 +45,7 @@ public final class R {
         public static final int labelPref=0x7f050005;
         public static final int passwordPref=0x7f050004;
         public static final int startPref=0x7f050007;
+        public static final int vibratePref=0x7f050008;
     }
     public static final class xml {
         public static final int escribimeprefs=0x7f040000;

@@ -19,4 +19,5 @@
 <item>300</item>
 </string-array>
 <string name="startPref">startPref</string>
+<string name="vibratePref">vibratePref</string>
 </resources>

@@ -35,10 +35,12 @@ import android.util.Log;
 public class EscribimeService extends Service {
 	private static final int NOTIFICATION_ID = 120198237;
 	
+	static SharedPreferences prefs;
     static String userid;
     static String password;
     static String label;
     static int updateInterval;
+    static boolean vibrate;
     
     static boolean running = false;
 
@@ -62,12 +64,11 @@ public class EscribimeService extends Service {
 	}
 	
    protected void loadPreferences() {
-		// Get our values out of preferences
-       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
        userid = prefs.getString(getString(R.string.emailPref), null);
        password = prefs.getString(getString(R.string.passwordPref), null);
        label = prefs.getString(getString(R.string.labelPref), null);
        updateInterval = Integer.parseInt(prefs.getString(getString(R.string.intervalPref), null));
+       vibrate = prefs.getBoolean(getString(R.string.vibratePref), false);
    }
 
    private void updateNotification(int unread, int status) {
@@ -100,12 +101,17 @@ public class EscribimeService extends Service {
 		CharSequence tickerText = "unread = " + unread;
 		long when = System.currentTimeMillis();
 		notification = new Notification(icon, tickerText, when);
-		// TL: only show light if there are unread messages
+		// TL: only show light (and/or vibrate) if there are unread messages
 		if (unread > 0) {
 			notification.flags |= Notification.FLAG_SHOW_LIGHTS;
 			notification.ledARGB = 0xFFFF0000;
 			notification.ledOnMS = 300;
 			notification.ledOffMS = 1000;
+			
+			if (vibrate) {
+				long[] pattern = {0, 150, 250, 250, 250, 150};
+				notification.vibrate = pattern;
+			}
 		}
 		
 		Context context = getApplicationContext();
@@ -129,8 +135,8 @@ public class EscribimeService extends Service {
         String ns = Context.NOTIFICATION_SERVICE;
 		mNotificationManager = (NotificationManager) getSystemService(ns);
 
-		// TL: we should load preferences each time we poll, otherwise if they have been changed
-		// since the service started, we won't pick up the new values
+		// Save a pointer to our preferences for use later
+	    prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		loadPreferences();
 	
 		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);
@@ -143,12 +149,15 @@ public class EscribimeService extends Service {
 					status += 4;
 				}
 				if (status > 0) {
-					updateNotification(unread, status);
+					// TL: need better logic here to determine when to update the notification
+					// It's more complicated because changes to the lime shouldn't trigger a vibrate
+					if (unread > lastUnread) {
+						updateNotification(unread, status);
+					}
 				} else {
 					clearNotification();
 				}
-				lastUnread = unread;
-				
+				lastUnread = unread;				
 			}
 		}, 0, updateInterval * 1000);
 		Log.d("EscribimeService","Monotoring label " + label + " every " + updateInterval + " seconds");
