@@ -48,10 +48,11 @@ public class EscribimeService extends Service {
     
     static Escribime activity;
     
-    Notification notification;
+    static Notification notification;
     NotificationManager mNotificationManager;
     
     int lastUnread = 0;
+	int lastStatus = 0;
 
 	@Override
 	public IBinder onBind(Intent arg0) {
@@ -70,9 +71,16 @@ public class EscribimeService extends Service {
        vibrate = prefs.getBoolean(getString(R.string.vibratePref), false);
    }
 
-   private void updateNotification(int unread, int status) {
+   /**
+    * 
+    * @param unread - how many unread messages there are
+    * @param iconStatus - which icon to draw (1-7)
+    * @param activeNotify - set to true when something new happened on this notification
+    *        (e.g. we should vibrate)
+    */
+   private void updateNotification(int unread, int iconStatus, boolean activeNotify) {
 	    int icon;
-	    switch (status) {
+	    switch (iconStatus) {
 	    case 1:
 	    	icon = R.drawable.happyness1;
 	    	break;
@@ -98,16 +106,23 @@ public class EscribimeService extends Service {
 	    	icon = R.drawable.happyness;
 	    }
 		CharSequence tickerText = "unread = " + unread;
-		long when = System.currentTimeMillis();
-		notification = new Notification(icon, tickerText, when);
+	    long when = System.currentTimeMillis();
+	    
+	    notification.icon = icon;
+	    notification.tickerText = tickerText;
+	    notification.when = when;
+	    notification.flags = Notification.FLAG_ONGOING_EVENT;
+		notification.number = unread;
+	    
 		// TL: only show light (and/or vibrate) if there are unread messages
 		if (unread > 0) {
 			notification.flags |= Notification.FLAG_SHOW_LIGHTS;
 			notification.ledARGB = 0xFFFF0000;
-			notification.ledOnMS = 300;
-			notification.ledOffMS = 1000;
+			notification.ledOnMS = 1000;
+			notification.ledOffMS = 300;
 			
-			if (vibrate) {
+			if (vibrate && activeNotify) {
+				// Vibrate only if there are new messages
 				long[] pattern = {0, 150, 250, 250, 250, 150};
 				notification.vibrate = pattern;
 			}
@@ -117,9 +132,10 @@ public class EscribimeService extends Service {
 		CharSequence contentTitle = "Escribime";
 		CharSequence contentText = "unread = " + unread;
 		Intent notificationIntent = new Intent( context, Escribime.class);
-
 		PendingIntent contentIntent = PendingIntent.getActivity( context, 0, notificationIntent, 0);
 		notification.setLatestEventInfo( context, contentTitle, contentText, contentIntent);
+
+		// Actually send the notification
 		mNotificationManager.notify( NOTIFICATION_ID, notification);
 	}
 	
@@ -137,11 +153,26 @@ public class EscribimeService extends Service {
 		// Save a pointer to our preferences for use later
 	    prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		loadPreferences();
+				
+		// Initialize the Notification object that will be used throughout the service lifetime
+		CharSequence contentTitle = "Escribime";
+		CharSequence contentText = "";
+		Context context = getApplicationContext();
+		Intent notificationIntent = new Intent( context, Escribime.class);
+
+		PendingIntent contentIntent = PendingIntent.getActivity( context, 0, notificationIntent, 0);
+		notification = new Notification(R.drawable.happyness, "", System.currentTimeMillis());
+		notification.number = 1;
+		notification.setLatestEventInfo( context, contentTitle, contentText, contentIntent);		
+		
 	
 		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);
 		timer.scheduleAtFixedRate( new TimerTask() {
 			public void run() {
 				int status = getStatus();
+				// Which icon to use
+				int icon = status;
+				Log.d(EscribimeService.class.getCanonicalName(), "Got online status: " + status);
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
 				if( unread == -1 ) {
 					Log.d(EscribimeService.class.getCanonicalName(), "There was an error fetching unread. Discarding");
@@ -149,21 +180,21 @@ public class EscribimeService extends Service {
 				}
 				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
 				if( unread > 0) {
-					status += 4;
+					icon += 4;
 				}
-				if (status > 0) {
-					// TL: need better logic here to determine when to update the notification
+				if (status > 0 || unread > 0) {
+					// TL: need to verify the logic here to determine how to update the notification
 					// It's more complicated because changes to the lime shouldn't trigger a vibrate
-					if (unread > lastUnread) {
-						updateNotification(unread, status);
-					}
+					updateNotification(unread, icon, (unread > lastUnread));
 				} else {
+					// Nothing to notify; clear the notification
 					clearNotification();
 				}
 				lastUnread = unread;
+				lastStatus = status;
 			}
 		}, 0, updateInterval * 1000);
-		Log.d("EscribimeService","Monotoring label " + label + " every " + updateInterval + " seconds");
+		Log.d("EscribimeService","Monitoring label " + label + " every " + updateInterval + " seconds");
 		
 		EscribimeService.running = true;
 	}
@@ -194,7 +225,7 @@ public class EscribimeService extends Service {
                 if( e.toString().contains("Unauthorized")) {
 	                activity.runOnUiThread(new Runnable() {
 	                	public void run() {
-	                		activity.dealWithError( "Can't log-in to GMail. Please check your settings");
+	                		activity.dealWithError( "Can't log in to GMail. Please check your settings.");
 	                	}
 	                });
                 }
@@ -209,17 +240,12 @@ public class EscribimeService extends Service {
 	/**
 	 * Get our statuses from the online server
 	 * @return 0 if neither is online
-	 *         1 if I am online
-	 *         2 if you are online
+	 *         1 if you are online
+	 *         2 if I am online
 	 *         3 if we are both online
 	 */
 	int getStatus() {
-		// TL: can I assume that userid has already been set at this point, or do I
-		// need to retrieve it from settings each time?
-        SharedPreferences settings = getSharedPreferences(Escribime.PREFS_NAME, 0);
-        userid = settings.getString("userid", "");
 	    HttpUriRequest request = new HttpGet("http://ofb.net:3300/status/q");
-	    Log.d("Escribime", "Fetching status...");
 	    
 	    boolean my_avail = false, you_avail = false;
 	    try {

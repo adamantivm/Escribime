@@ -43,6 +43,7 @@ import android.widget.ToggleButton;
  *  - Start service on phone reboot
  * 
  *  - Hide email/password settings behind the menu button
+ *  - Retrieve online status from server to set initial value of toggle button
  */
 
 public class Escribime extends Activity {
