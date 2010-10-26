@@ -122,18 +122,18 @@ public class EscribimeService extends Service {
 		notification.number = unread;
 
 		// TL: only show light (and/or vibrate) if there are unread messages
-		if (unread > 0) {
+		if (unread > 0 || (statusOnline & STATUS_YOU) == STATUS_YOU) {
 			notification.flags |= Notification.FLAG_SHOW_LIGHTS;
 
 			//	Blink differently when YOU are online
-			if((statusOnline & STATUS_YOU) == STATUS_YOU) {
-				notification.ledARGB = 0xFFFFFF00;
-				notification.ledOffMS = 300;
-				notification.ledOnMS = 1000;
-			} else {
+			if(unread > 0) {
 				notification.ledARGB = 0xFFFF0000;
 				notification.ledOffMS = 1000;
 				notification.ledOnMS = 300;
+			} else {
+				notification.ledARGB = 0xFF00FF00;
+				notification.ledOffMS = 300;
+				notification.ledOnMS = 1000;
 			}
 			
 			if (vibrate && activeNotify) {
