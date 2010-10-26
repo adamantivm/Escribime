@@ -53,6 +53,10 @@ public class EscribimeService extends Service {
     
     int lastUnread = 0;
 	int lastStatus = 0;
+	
+	//	ORable flags for the status
+	static final int STATUS_YOU = 1;	//	You are online
+	static final int STATUS_ME = 2;		//	I am online
 
 	@Override
 	public IBinder onBind(Intent arg0) {
@@ -74,11 +78,12 @@ public class EscribimeService extends Service {
    /**
     * 
     * @param unread - how many unread messages there are
+    * @param stautsOnline - YOU and ME online status
     * @param iconStatus - which icon to draw (1-7)
     * @param activeNotify - set to true when something new happened on this notification
     *        (e.g. we should vibrate)
     */
-   private void updateNotification(int unread, int iconStatus, boolean activeNotify) {
+   private void updateNotification(int unread, int statusOnline, int iconStatus, boolean activeNotify) {
 	    int icon;
 	    switch (iconStatus) {
 	    case 1:
@@ -107,27 +112,39 @@ public class EscribimeService extends Service {
 	    }
 		CharSequence tickerText = "unread = " + unread;
 	    long when = System.currentTimeMillis();
-	    
+
 	    notification.icon = icon;
 	    notification.tickerText = tickerText;
 	    notification.when = when;
-	    notification.flags = Notification.FLAG_ONGOING_EVENT;
+	    if( statusOnline != 0) {
+	    	notification.flags |= Notification.FLAG_NO_CLEAR;
+	    }
 		notification.number = unread;
-	    
+
 		// TL: only show light (and/or vibrate) if there are unread messages
 		if (unread > 0) {
 			notification.flags |= Notification.FLAG_SHOW_LIGHTS;
-			notification.ledARGB = 0xFFFF0000;
-			notification.ledOnMS = 1000;
-			notification.ledOffMS = 300;
+
+			//	Blink differently when YOU are online
+			if((statusOnline & STATUS_YOU) == STATUS_YOU) {
+				notification.ledARGB = 0xFFFFFF00;
+				notification.ledOffMS = 300;
+				notification.ledOnMS = 1000;
+			} else {
+				notification.ledARGB = 0xFFFF0000;
+				notification.ledOffMS = 1000;
+				notification.ledOnMS = 300;
+			}
 			
 			if (vibrate && activeNotify) {
 				// Vibrate only if there are new messages
 				long[] pattern = {0, 150, 250, 250, 250, 150};
 				notification.vibrate = pattern;
+			} else {
+				notification.vibrate = null;
 			}
 		}
-		
+
 		Context context = getApplicationContext();
 		CharSequence contentTitle = "Escribime";
 		CharSequence contentText = "unread = " + unread;
@@ -185,7 +202,9 @@ public class EscribimeService extends Service {
 				if (status > 0 || unread > 0) {
 					// TL: need to verify the logic here to determine how to update the notification
 					// It's more complicated because changes to the lime shouldn't trigger a vibrate
-					updateNotification(unread, icon, (unread > lastUnread));
+					// JAC: I added logic to also vibrate when YOU become online
+					updateNotification(unread, status, icon, 
+							(unread > lastUnread) || ((status & ~lastStatus & STATUS_YOU) == STATUS_YOU));
 				} else {
 					// Nothing to notify; clear the notification
 					clearNotification();
@@ -299,11 +318,15 @@ public class EscribimeService extends Service {
 			e.printStackTrace();
 		}
 		
-		if (!my_avail && !you_avail) return 0;
-		else if (!my_avail && you_avail) return 1;
-		else if (my_avail && !you_avail) return 2;
-		else if (my_avail && you_avail) return 3;
-		else return -1;
+		int status = 0;
+		if( my_avail) {
+			status |= STATUS_ME;
+		}
+		if( you_avail) {
+			status |= STATUS_YOU;
+		}
+		
+		return status;
 	}
 	
 	// ----------------------------------------------------------------
