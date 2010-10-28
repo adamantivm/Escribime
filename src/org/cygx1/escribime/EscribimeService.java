@@ -116,33 +116,31 @@ public class EscribimeService extends Service {
 	    notification.icon = icon;
 	    notification.tickerText = tickerText;
 	    notification.when = when;
-	    if( statusOnline != 0) {
-	    	notification.flags |= Notification.FLAG_NO_CLEAR;
-	    }
+    	notification.flags = statusOnline == 0 ? 0 : Notification.FLAG_NO_CLEAR;
 		notification.number = unread;
 
-		// TL: only show light (and/or vibrate) if there are unread messages
+		// Show light (and/or vibrate) if there are unread messages
+		// or if you are online
 		if (unread > 0 || (statusOnline & STATUS_YOU) == STATUS_YOU) {
 			notification.flags |= Notification.FLAG_SHOW_LIGHTS;
+			notification.ledARGB = 0xFFFF0000;
+			notification.ledOnMS = 300;
 
-			//	Blink differently when YOU are online
+			//	If there are messages, blink red
 			if(unread > 0) {
-				notification.ledARGB = 0xFFFF0000;
 				notification.ledOffMS = 1000;
-				notification.ledOnMS = 300;
+			//	Else (YOU are online), just remain constantly on, red
 			} else {
-				notification.ledARGB = 0xFF00FF00;
-				notification.ledOffMS = 300;
-				notification.ledOnMS = 1000;
+				notification.ledOffMS = 0;
 			}
-			
-			if (vibrate && activeNotify) {
-				// Vibrate only if there are new messages
-				long[] pattern = {0, 150, 250, 250, 250, 150};
-				notification.vibrate = pattern;
-			} else {
-				notification.vibrate = null;
-			}
+		}
+
+		if (vibrate && activeNotify) {
+			// Vibrate only if there are new messages
+			long[] pattern = {0, 150, 250, 250, 250, 150};
+			notification.vibrate = pattern;
+		} else {
+			notification.vibrate = null;
 		}
 
 		Context context = getApplicationContext();
@@ -186,16 +184,16 @@ public class EscribimeService extends Service {
 		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);
 		timer.scheduleAtFixedRate( new TimerTask() {
 			public void run() {
-				int status = getStatus();
-				// Which icon to use
-				int icon = status;
+				final int status = getStatus();
 				Log.d(EscribimeService.class.getCanonicalName(), "Got online status: " + status);
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
-				if( unread == -1 ) {
-					Log.d(EscribimeService.class.getCanonicalName(), "There was an error fetching unread. Discarding");
+				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
+				if( unread == -1 || status == -1) {
+					Log.d(EscribimeService.class.getCanonicalName(), "There was an error fetching unread or status. Discarding");
 					return;
 				}
-				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
+				// Which icon to use
+				int icon = status;
 				if( unread > 0) {
 					icon += 4;
 				}
@@ -266,9 +264,12 @@ public class EscribimeService extends Service {
 	int getStatus() {
 	    HttpUriRequest request = new HttpGet("http://ofb.net:3300/status/q");
 	    
-	    boolean my_avail = false, you_avail = false;
+	    int status = 0;
 	    try {
 	    	HttpResponse response = http.execute(request);
+			if(response.getStatusLine().getStatusCode() != 200) {
+				throw new Exception(response.getStatusLine().getReasonPhrase());
+			}
 			InputStream is = response.getEntity().getContent();
 			
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -293,40 +294,19 @@ public class EscribimeService extends Service {
 				}
 				
 				// Got one status field
-				if (email != null) {
-					if (userid.equals(email)) {
-						// it's me
-						my_avail = availability;
-					} else {
-						// it's someone else; I sure hope it's you
-						you_avail = availability;
-					}
+				if (email != null && availability) {
+					status |= userid.equals(email) ? STATUS_ME : STATUS_YOU;
 				}
 			}
 
 			is.close();
+			return status;
 
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			Log.d("Escribime", "Error updating status:" + e);
-			return 0;
-		} catch (ParserConfigurationException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			Log.d( EscribimeService.class.getName(), "Error updating status:" + e);
 			e.printStackTrace();
-		} catch (SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return -1;
 		}
-		
-		int status = 0;
-		if( my_avail) {
-			status |= STATUS_ME;
-		}
-		if( you_avail) {
-			status |= STATUS_YOU;
-		}
-		
-		return status;
 	}
 	
 	// ----------------------------------------------------------------
