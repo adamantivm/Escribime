@@ -30,7 +30,6 @@ import android.widget.ToggleButton;
  *  - Take credentials from Google account in the phone 
  *  - Hook up to synchronization service and update via that channel (to avoid more
  *    connections to the web)
- *  - Unread count as icon
  *  - Concealed shortcut from Activity to GMail label
  *  - Better UI/Configuration interaction
  *  -- Start service automatically after opening if already configured
@@ -97,7 +96,6 @@ public class Escribime extends Activity {
 				Escribime.this.stopService(svc);
 				EscribimeService.running = false;
 				setRunning( false);
-				Escribime.this.finish();
 			}
 		});
 
