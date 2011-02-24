@@ -184,14 +184,22 @@ public class EscribimeService extends Service {
 		Log.d(EscribimeService.class.getCanonicalName(), "Service started. Using updateInterval = " + updateInterval);
 		timer.scheduleAtFixedRate( new TimerTask() {
 			public void run() {
-				final int status = getStatus();
-				Log.d(EscribimeService.class.getCanonicalName(), "Got online status: " + status);
+				int tempStatus = getStatus();
+				Log.d(EscribimeService.class.getCanonicalName(), "Got online status: " + tempStatus);
 				final int unread = EscribimeService.this.fetchUnread( userid, password, label);
 				Log.d(EscribimeService.class.getCanonicalName(), "Got unread = " + unread);
-				if( unread == -1 || status == -1) {
+				
+				if( tempStatus == -1) {
+					Log.d(EscribimeService.class.getCanonicalName(), "There was an error fetching status. Re-using last value");
+					tempStatus = lastStatus;
+				}
+				final int status = tempStatus;
+				
+				if( unread == -1) {
 					Log.d(EscribimeService.class.getCanonicalName(), "There was an error fetching unread or status. Discarding");
 					return;
 				}
+
 				// Which icon to use
 				int icon = status;
 				if( unread > 0) {
